@@ -27,6 +27,12 @@ def rover_coords(binary_img):
     y_pixel = -(xpos - binary_img.shape[1]/2 ).astype(np.float)
     return x_pixel, y_pixel
 
+def find_rocks(img,mask,levels=(110,110,50)):
+    rockpix = ((img[:,:,0]>levels[0])&(img[:,:,1]>levels[1])&(img[:,:,2]<levels[2]))
+    rock_image = np.zeros_like(img[:,:,0])
+    rock_image[rockpix] = 1
+    return rock_image * mask
+
 
 # Define a function to convert to radial coords in rover space
 def to_polar_coords(x_pixel, y_pixel):
@@ -74,8 +80,9 @@ def perspect_transform(img, src, dst):
            
     M = cv2.getPerspectiveTransform(src, dst)
     warped = cv2.warpPerspective(img, M, (img.shape[1], img.shape[0]))# keep same size as input image
-    
-    return warped
+    mask = cv2.warpPerspective(np.ones_like(img[:,:,0]), M, (img.shape[1], img.shape[0]))
+
+    return warped, mask
 
 
 # Apply the above functions in succession and update the Rover state accordingly
@@ -83,25 +90,103 @@ def perception_step(Rover):
     # Perform perception steps to update Rover()
     # TODO: 
     # NOTE: camera image is coming to you in Rover.img
+    Update_map = False
     # 1) Define source and destination points for perspective transform
+    dst_size = 5 
+    bottom_offset = 6
+    source = np.float32([[14, 140], [301 ,140],[200, 96], [118, 96]])
+    image = Rover.img
+    destination = np.float32([[image.shape[1]/2 - dst_size, image.shape[0] - bottom_offset],
+                      [image.shape[1]/2 + dst_size, image.shape[0] - bottom_offset],
+                      [image.shape[1]/2 + dst_size, image.shape[0] - 2*dst_size - bottom_offset], 
+                      [image.shape[1]/2 - dst_size, image.shape[0] - 2*dst_size - bottom_offset],
+                      ])
+
     # 2) Apply perspective transform
+    warped,mask = perspect_transform(Rover.img, source, destination)
     # 3) Apply color threshold to identify navigable terrain/obstacles/rock samples
+    threshed = color_thresh(warped)
+    obs_map = np.absolute(np.float32(threshed)-1)*mask
     # 4) Update Rover.vision_image (this will be displayed on left side of screen)
         # Example: Rover.vision_image[:,:,0] = obstacle color-thresholded binary image
         #          Rover.vision_image[:,:,1] = rock_sample color-thresholded binary image
         #          Rover.vision_image[:,:,2] = navigable terrain color-thresholded binary image
-
+    Rover.vision_image[:,:,0] = obs_map * 255
+    Rover.vision_image[:,:,2] = threshed * 255
     # 5) Convert map image pixel values to rover-centric coords
+    xpix, ypix = rover_coords(threshed)
+    obs_xpix, obs_ypix = rover_coords(obs_map)
     # 6) Convert rover-centric pixel values to world coordinates
+    world_map_size = Rover.worldmap.shape[0]
+    scale = 2 * dst_size
+    x_pix_world, y_pix_world = pix_to_world(xpix, ypix, Rover.pos[0],Rover.pos[1],Rover.yaw, world_map_size,scale)
+    obs_x_pix_world, obs_y_pix_world = pix_to_world(obs_xpix, obs_ypix, Rover.pos[0],Rover.pos[1],Rover.yaw, world_map_size,scale)
     # 7) Update Rover worldmap (to be displayed on right side of screen)
         # Example: Rover.worldmap[obstacle_y_world, obstacle_x_world, 0] += 1
         #          Rover.worldmap[rock_y_world, rock_x_world, 1] += 1
         #          Rover.worldmap[navigable_y_world, navigable_x_world, 2] += 1
+    update_map_threshold = 1.0
+    if Rover.pitch > 180 and Rover.roll > 180:
+        if (360-Rover.pitch) < update_map_threshold and (360-Rover.roll) < update_map_threshold:
+            Update_map = True
+    elif Rover.pitch < 180 and Rover.roll > 180:
+        if (Rover.pitch) < update_map_threshold and (360-Rover.roll) < update_map_threshold:
+            Update_map = True
+    elif Rover.pitch > 180 and Rover.roll < 180:
+        if (360-Rover.pitch) < update_map_threshold and (Rover.roll) < update_map_threshold:
+            Update_map = True
+    else:
+        if (Rover.pitch) < update_map_threshold and (Rover.roll) < update_map_threshold:
+            Update_map = True
+    
+    print("Rover Pitch: ",Rover.pitch,"; Rover Roll: ",Rover.roll, "; Update map: ",Update_map)
+    if Update_map:
+        Rover.worldmap[obs_y_pix_world, obs_x_pix_world,0] += 1
+        Rover.worldmap[y_pix_world, x_pix_world, 2] += 10
+    WallFollowMask = np.ones_like(mask) * mask
+    WallFollowMask[:,0:int(WallFollowMask.shape[1]*0.45)] = 0
+    rock_map = find_rocks(warped,WallFollowMask,levels=(110,110,50))
+    WallFollowMask[:,int(WallFollowMask.shape[1]*0.7):] = 0
+    WallFollowMask[:int(WallFollowMask.shape[0]*0.4),:] = 0
+    WallFollowMask[int(WallFollowMask.shape[0]*0.95):,:] = 0
+    xpix_nav,ypix_nav = rover_coords(threshed * WallFollowMask)
+    
+    if rock_map.any():
+        rock_x,rock_y = rover_coords(rock_map)
+        rock_x_world, rock_y_world = pix_to_world(rock_x,rock_y, Rover.pos[0],Rover.pos[1],Rover.yaw, world_map_size,scale)
+        dist_rock, angle_rock = to_polar_coords(rock_x,rock_y)
+        Rover.nav_dists = dist_rock
+        Rover.nav_angles = angle_rock
 
+        rck_idx = np.argmin(dist_rock)
+        rck_xcen = rock_x_world[rck_idx]
+        rck_ycen = rock_y_world[rck_idx]
+        Rover.worldmap[rck_ycen, rck_xcen, :] = 255
+        Rover.vision_image[:,:,1] = rock_map * 255
+        Rover.Rock_found = True
+    
+    #if not Rover.mode == 'RockPickUP':
+    else:
+        Rover.vision_image[:,:,1] = 0
+
+        #If no rocks found move in freespace
+        distance, angles = to_polar_coords(xpix_nav,ypix_nav)
+        Rover.nav_dists = distance
+        Rover.nav_angles = angles
+        Rover.Rock_found = False
+    
+        
+        
+        
+
+    #print('Navigation angles: ', np.mean(Rover.nav_angles))
+    #print('Navigation Distance: ',np.mean(Rover.nav_dists))
     # 8) Convert rover-centric pixel positions to polar coordinates
     # Update Rover pixel distances and angles
         # Rover.nav_dists = rover_centric_pixel_distances
         # Rover.nav_angles = rover_centric_angles
+
+
     
  
     

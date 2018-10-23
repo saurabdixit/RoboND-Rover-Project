@@ -57,6 +57,8 @@ class RoverState():
         self.brake_set = 10 # Brake setting when braking
         # The stop_forward and go_forward fields below represent total count
         # of navigable terrain pixels.  This is a very crude form of knowing
+        self.time_spent_by_rover_on_one_location = time.time()
+        self.old_pos = (None,None)
         # when you can keep going and when you should stop.  Feel free to
         # get creative in adding new fields or modifying these!
         self.stop_forward = 50 # Threshold to initiate stopping
@@ -70,6 +72,7 @@ class RoverState():
         # Update this image with the positions of navigable terrain
         # obstacles and rock samples
         self.worldmap = np.zeros((200, 200, 3), dtype=np.float) 
+        self.Rock_found = False
         self.samples_pos = None # To store the actual sample positions
         self.samples_to_find = 0 # To store the initial count of samples
         self.samples_located = 0 # To store number of samples located on map
@@ -99,7 +102,7 @@ def telemetry(sid, data):
         fps = frame_counter
         frame_counter = 0
         second_counter = time.time()
-    print("Current FPS: {}".format(fps))
+    #print("Current FPS: {}".format(fps))
 
     if data:
         global Rover
@@ -109,8 +112,17 @@ def telemetry(sid, data):
         if np.isfinite(Rover.vel):
 
             # Execute the perception and decision steps to update the Rover's state
+            if Rover.old_pos[0] == None and Rover.old_pos[1] ==None:
+                Rover.old_pos = Rover.pos
             Rover = perception_step(Rover)
             Rover = decision_step(Rover)
+
+            if (time.time()-Rover.time_spent_by_rover_on_one_location) > 10:
+                Rover.old_pos = Rover.pos
+                Rover.time_spent_by_rover_on_one_location = time.time()
+            
+            
+            
 
             # Create output images to send to server
             out_image_string1, out_image_string2 = create_output_images(Rover)
