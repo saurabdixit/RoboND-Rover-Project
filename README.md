@@ -7,13 +7,13 @@ This project helped us in understanding how the perception, decision making and 
 ## Notebook Analysis
 ### Rock Identification
 I have added a function named find_rocks(img,RGB_thresholds). This function identifies the golden sample present in the image taken by the Rover.
-'''
+```
 def find_rocks(img,levels=(110,110,50)):
     rockpix = ((img[:,:,0]>levels[0])&(img[:,:,1]>levels[1])&(img[:,:,2]<levels[2]))
     rock_image = np.zeros_like(img[:,:,0])
     rock_image[rockpix] = 1
     return rock_image
-'''
+```
 
 ### Obstacle Identification
 To identify the obstacles in the environment. I have identified the areas which are not navigable.
