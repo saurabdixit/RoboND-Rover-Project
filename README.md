@@ -15,7 +15,7 @@ def find_rocks(img,levels=(110,110,50)):
     return rock_image
 ```
 Following is the example of input amd output image.
-[![](./misc/find_rock.png?raw=true "Find Rock function input and output")]
+![](./misc/find_rock.png?raw=true "Find Rock function input and output")
 ### Obstacle Identification
 To identify the obstacles in the environment. I have identified the areas which are not navigable.
 ```python
@@ -33,7 +33,7 @@ def perspect_transform(img, src, dst):
     return warped,mask
 ```
 After multiplying the mask with the threshold image, we got following results:
-[![](./misc/warped.png?raw=true "Warped")]
+![](./misc/warped.png?raw=true "Warped")
 
 ### process_image() function
 I modified the process image function to the following:
