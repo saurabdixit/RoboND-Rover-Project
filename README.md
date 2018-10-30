@@ -17,12 +17,12 @@ def find_rocks(img,levels=(110,110,50)):
 Following is the example of input amd output image.
 ![](./misc/find_rock.png?raw=true "Find Rock function input and output")
 ### Obstacle Identification
-To identify the obstacles in the environment. I have identified the areas which are not navigable.
+To identify the obstacles in the environment, I have identified the areas which are not navigable.
 ```python
-threshold = color_thresh(warped)
-obs_map = np.absolute(np.float32(threshold)-1)
+threshold = color_thresh(warped)                    #Navigable areas
+obs_map = np.absolute(np.float32(threshold)-1)      #Obstacles
 ```
-There was a mask introduced in the perspective_transform function to make sure to capture just the relevant part of the image. Hence, the perspective transform function was changed to 
+There was a mask introduced in the perspective_transform function to make sure that robot captures just the relevant part of the image. Hence, the perspective transform function was changed to 
 ```python
 def perspect_transform(img, src, dst):
            
