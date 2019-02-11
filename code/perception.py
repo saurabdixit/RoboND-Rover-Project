@@ -17,6 +17,16 @@ def color_thresh(img, rgb_thresh=(160, 160, 160)):
     # Return the binary image
     return color_select
 
+#Define a function to generate a mask to follow the wall
+def mask_generator(mask,polygon_pts):
+    cv2.fillPoly(mask,[polygon_pts],1)
+    return mask
+
+
+def ArcMaskGenerator(mask,axes,center,angle,startAngleDegrees,endAngleDegrees):
+    cv2.ellipse(mask,center,axes,angle,startAngleDegrees,endAngleDegrees,1,thickness=cv2.FILLED)
+    return mask
+
 # Define a function to convert from image coords to rover coords
 def rover_coords(binary_img):
     # Identify nonzero pixels
@@ -111,8 +121,10 @@ def perception_step(Rover):
         # Example: Rover.vision_image[:,:,0] = obstacle color-thresholded binary image
         #          Rover.vision_image[:,:,1] = rock_sample color-thresholded binary image
         #          Rover.vision_image[:,:,2] = navigable terrain color-thresholded binary image
+    
     Rover.vision_image[:,:,0] = obs_map * 255
     Rover.vision_image[:,:,2] = threshed * 255
+    
     # 5) Convert map image pixel values to rover-centric coords
     xpix, ypix = rover_coords(threshed)
     obs_xpix, obs_ypix = rover_coords(obs_map)
@@ -125,7 +137,7 @@ def perception_step(Rover):
         # Example: Rover.worldmap[obstacle_y_world, obstacle_x_world, 0] += 1
         #          Rover.worldmap[rock_y_world, rock_x_world, 1] += 1
         #          Rover.worldmap[navigable_y_world, navigable_x_world, 2] += 1
-    update_map_threshold = 1.0
+    update_map_threshold = 0.5
     if Rover.pitch > 180 and Rover.roll > 180:
         if (360-Rover.pitch) < update_map_threshold and (360-Rover.roll) < update_map_threshold:
             Update_map = True
@@ -139,18 +151,101 @@ def perception_step(Rover):
         if (Rover.pitch) < update_map_threshold and (Rover.roll) < update_map_threshold:
             Update_map = True
     
-    print("Rover Pitch: ",Rover.pitch,"; Rover Roll: ",Rover.roll, "; Update map: ",Update_map)
+    #print("Rover Pitch: ",Rover.pitch,"; Rover Roll: ",Rover.roll, "; Update map: ",Update_map)
     if Update_map:
         Rover.worldmap[obs_y_pix_world, obs_x_pix_world,0] += 1
-        Rover.worldmap[y_pix_world, x_pix_world, 2] += 10
-    WallFollowMask = np.ones_like(mask) * mask
-    WallFollowMask[:,0:int(WallFollowMask.shape[1]*0.45)] = 0
-    rock_map = find_rocks(warped,WallFollowMask,levels=(110,110,50))
-    WallFollowMask[:,int(WallFollowMask.shape[1]*0.7):] = 0
-    WallFollowMask[:int(WallFollowMask.shape[0]*0.4),:] = 0
-    WallFollowMask[int(WallFollowMask.shape[0]*0.95):,:] = 0
-    xpix_nav,ypix_nav = rover_coords(threshed * WallFollowMask)
+        Rover.worldmap[y_pix_world, x_pix_world, 2] += 20
     
+    #polygon_pts = np.array([[int(image.shape[1]/2-1),image.shape[0]-1],
+    #                        [int(image.shape[1]*0.45),0],
+    #                        [int(image.shape[1]*0.66),0],
+    #                        [int(image.shape[1]/2+1),image.shape[0]-1]],
+    #                        np.int32)
+
+    #polygon_pts = np.array([[150,60],
+    #                        [240,100]
+    #                        [165,155],
+    #                        [150,155]],
+    #                        np.int32)
+
+    cen = (160,160)
+
+    RockMask = np.zeros_like(image[:,:,0])
+    RockMask = ArcMaskGenerator(RockMask, (45,70),cen,-144,0,80)
+    #RockMask[int(RockMask.shape[0]*0.90):,:] = 0
+    rock_map = find_rocks(warped,RockMask,levels=(110,110,50))
+    #Rover.vision_image[:,:,0] = RockMask * 255
+
+    #polygon_pts = np.array([[140,0],
+    #                        [288,64],
+    ##                        [160,160]],
+      #                      np.int32)
+    
+    
+    WallFollowMask = np.zeros_like(image[:,:,0])
+    #WallFollowMask = ArcMaskGenerator(WallFollowMask,160,(160,160),-30,-80)
+    #WallFollowMask = ArcMaskGenerator(WallFollowMask,50,(160,160),-60,-120)
+    #WallFollowMask = ArcMaskGenerator(WallFollowMask,30,(160,160),-120,-150)
+    #WORKING well: went inside the rocks. problems with sample
+    #WallFollowMask = ArcMaskGenerator(WallFollowMask,(140,25),cen,-144,0,95) 
+
+    #Optimal working no issues found until now
+    #Rover.steer = np.clip(np.mean(Rover.nav_angles * 180/np.pi), -15, 15)
+    found_direction = False
+    min_collision = 0
+    min_collision_i = -145
+    too_much_collision = 3
+
+    for i in range(-108,-72,2):
+        FrontalCollisionMask = np.zeros_like(image[:,:,0])
+        FrontalCollisionMask = ArcMaskGenerator(FrontalCollisionMask,(20,3),cen,i,-90,90) 
+        FrontalCollisionMask[int(FrontalCollisionMask.shape[0]*0.95):,:] = 0
+        x_collision, _ = rover_coords(abs(1-threshed) * FrontalCollisionMask)
+        if len(x_collision) == 0:
+            found_direction = True
+            break
+
+        if (min_collision == 0 or len(x_collision) < min_collision):
+            min_collision = len(x_collision)
+            min_collision_i = i
+
+    
+    if found_direction:
+        Rover.drive_direction = i
+        Rover.found_direction = found_direction
+    else:
+        if (min_collision == 0 or min_collision > too_much_collision):
+            Rover.drive_direction = 0
+            Rover.found_direction = False
+        else:
+            Rover.drive_direction = min_collision_i
+            Rover.found_direction = True
+    
+
+    #Rover.vision_image[:,:,2] = FrontalCollisionMask * 255
+
+    WallFollowMask = ArcMaskGenerator(WallFollowMask,(65,23),cen,Rover.drive_direction,-90,83) 
+    
+    
+    #WallFollowMask = ArcMaskGenerator(WallFollowMask,(140,60),cen,-144,0,90)
+    #WallFollowMask = ArcMaskGenerator(WallFollowMask,50,(160,160),-60,-120)
+    #WallFollowMask = ArcMaskGenerator(WallFollowMask,30,(160,160),-30,-60)
+
+    #WallFollowMask[:,int(WallFollowMask.shape[1]*0.72):] = 0
+    #WallFollowMask[int(WallFollowMask.shape[0]*0.96):,:] = 0
+    #Rover.vision_image[:,:,2] = WallFollowMask * 255
+
+    xpix_nav,ypix_nav = rover_coords(threshed * WallFollowMask)
+    #xpix_nav,ypix_nav = rover_coords(threshed)
+    #xpix_one_side, ypix_one_side = rover_coords(threshed * WallFollowMask)
+    #xpix_nav = np.append(xpix_nav,xpix_one_side)
+    #xpix_nav = xpix_one_side
+    #ypix_nav = np.append(ypix_nav,ypix_one_side)
+    #ypix_nav = ypix_one_side
+
+
+    
+
     if rock_map.any():
         rock_x,rock_y = rover_coords(rock_map)
         rock_x_world, rock_y_world = pix_to_world(rock_x,rock_y, Rover.pos[0],Rover.pos[1],Rover.yaw, world_map_size,scale)
@@ -174,6 +269,9 @@ def perception_step(Rover):
         Rover.nav_dists = distance
         Rover.nav_angles = angles
         Rover.Rock_found = False
+    
+    
+    
     
         
         
