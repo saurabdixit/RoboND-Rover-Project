@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import sys
 
 # This is where you can build a decision tree for determining throttle, brake and steer 
 # commands based on the output of the perception_step() function
@@ -17,8 +18,29 @@ def decision_step(Rover):
     
     # Example:
     # Check if we have vision data to make decisions with
-    if Rover.samples_located > 5:
-        Rover.mode = 'stop' 
+    if Rover.samples_located > 4 and Rover.mapped > 99.5:
+        Rover.throttle = 0
+        Rover.brake = Rover.brake_set
+        Rover.mode = 'stop'
+        if Rover.terminate_condition:
+            sys.exit(0)
+        print()
+        print('===========Congratulations Task Completed=============')
+        print()
+        print('-----------------------RESULTS------------------------')
+        print('Completion time:        ',Rover.total_time)
+        print('Percentage Mapped:      ',Rover.mapped)
+        print('Fidelity:               ',Rover.map_fidelity)
+        print('Samples Located:        ',Rover.samples_located)
+        print('Samples Collected:      ',Rover.samples_collected)
+        print()
+        print('------------------------------------------------------')
+        Rover.terminate_condition = True
+        return Rover
+
+
+
+
     if Rover.nav_angles is not None:
 
         if np.array_equal(np.round(Rover.old_pos,decimals=1),np.round(Rover.pos,decimals=1)) and (not Rover.picking_up) and (time.time()-Rover.time_spent_by_rover_on_one_location > 8):

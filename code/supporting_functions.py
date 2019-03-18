@@ -91,7 +91,7 @@ def create_output_images(Rover):
       rock_world_pos = Rover.worldmap[:,:,1].nonzero()
       # If there are, we'll step through the known sample positions
       # to confirm whether detections are real
-      samples_located = 0
+      Rover.samples_located = 0
       if rock_world_pos[0].any():
             
             rock_size = 2
@@ -104,7 +104,7 @@ def create_output_images(Rover):
                   # consider it a success and plot the location of the known
                   # sample on the map
                   if np.min(rock_sample_dists) < 3:
-                        samples_located += 1
+                        Rover.samples_located += 1
                         map_add[test_rock_y-rock_size:test_rock_y+rock_size, 
                         test_rock_x-rock_size:test_rock_x+rock_size, :] = 255
 
@@ -127,6 +127,8 @@ def create_output_images(Rover):
             fidelity = 0
       # Flip the map for plotting so that the y-axis points upward in the display
       map_add = np.flipud(map_add).astype(np.float32)
+      Rover.mapped = perc_mapped
+      Rover.map_fidelity = fidelity
       # Add some text about map and rock sample detection results
       cv2.putText(map_add,"Time: "+str(np.round(Rover.total_time, 1))+' s', (0, 10), 
                   cv2.FONT_HERSHEY_COMPLEX, 0.4, (255, 255, 255), 1)
@@ -136,7 +138,7 @@ def create_output_images(Rover):
                   cv2.FONT_HERSHEY_COMPLEX, 0.4, (255, 255, 255), 1)
       cv2.putText(map_add,"Rocks", (0, 55), 
                   cv2.FONT_HERSHEY_COMPLEX, 0.4, (255, 255, 255), 1)
-      cv2.putText(map_add,"  Located: "+str(samples_located), (0, 70), 
+      cv2.putText(map_add,"  Located: "+str(Rover.samples_located), (0, 70), 
                   cv2.FONT_HERSHEY_COMPLEX, 0.4, (255, 255, 255), 1)
       cv2.putText(map_add,"  Collected: "+str(Rover.samples_collected), (0, 85), 
                   cv2.FONT_HERSHEY_COMPLEX, 0.4, (255, 255, 255), 1)

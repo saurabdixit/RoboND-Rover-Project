@@ -63,6 +63,10 @@ class RoverState():
         self.old_pos = (None,None)
         self.found_direction = False
         self.drive_direction = None
+        self.mapped = 0.0
+        self.map_fidelity = 0.0
+        self.terminate_condition = False
+
         # when you can keep going and when you should stop.  Feel free to
         # get creative in adding new fields or modifying these!
         self.stop_forward = 50 # Threshold to initiate stopping
@@ -107,7 +111,7 @@ def telemetry(sid, data):
         fps = frame_counter
         frame_counter = 0
         second_counter = time.time()
-    print("Current FPS: {}".format(fps))
+    #print("Current FPS: {}".format(fps))
 
     if data:
         global Rover
@@ -148,6 +152,9 @@ def telemetry(sid, data):
                 commands = (Rover.throttle, Rover.brake, Rover.steer)
                 send_control(commands, out_image_string1, out_image_string2)
 
+            if Rover.terminate_condition:
+                print('Exiting----------------------')
+                sys.exit(0)
         # In case of invalid telemetry, send null commands
         else:
 
