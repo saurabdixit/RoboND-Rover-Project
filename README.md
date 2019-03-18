@@ -7,6 +7,7 @@ Please click on following image to watch the video
 <p align="center">
   <a href="http://www.youtube.com/watch?v=Zu-8fPl4TfM"><img src="http://img.youtube.com/vi/Zu-8fPl4TfM/0.jpg"></a>
 </p>
+
 ## Notebook Analysis 
 ### Rock Identification
 I have added a function named find_rocks. This function identifies the golden sample present in the image taken by the Rover.
