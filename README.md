@@ -3,9 +3,10 @@
 [![Udacity - Robotics NanoDegree Program](https://s3-us-west-1.amazonaws.com/udacity-robotics/Extra+Images/RoboND_flag.png)](https://www.udacity.com/robotics)
 # Search and Sample Return Project
 This project helped us in understanding how the perception, decision making and actuation are handeled in real life robotics.
-
+Please click on following image to watch the video
+<p align="center">
 [![Rover in action](http://img.youtube.com/vi/Zu-8fPl4TfM/0.jpg)](http://www.youtube.com/watch?v=Zu-8fPl4TfM)
-
+</p>
 ## Notebook Analysis 
 ### Rock Identification
 I have added a function named find_rocks. This function identifies the golden sample present in the image taken by the Rover.
