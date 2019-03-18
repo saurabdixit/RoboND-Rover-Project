@@ -5,10 +5,40 @@
 This project helped us in understanding how the perception, decision making and actuation are handeled in real life robotics.
 
 
-Please click on following image to watch the video
+## Please click on following image to watch the video
 <p align="center">
   <a href="http://www.youtube.com/watch?v=Zu-8fPl4TfM"><img src="http://img.youtube.com/vi/Zu-8fPl4TfM/0.jpg"></a>
 </p>
+
+## How to run this code?
+1) git clone this repository
+2) Run Rover simulator using following configuration and switch to autonomous mode.
+
+<p align="center">
+  <img src="./misc/Roversimconfiguration.png" />
+</p>
+
+3) Run drive_rover.py in anaconda terminal using RoboND environment.
+4) The robot should navigate in the environment autonomously and should stop when samples located is greater than 4 and percentage environment mapped is greater than 99.5%. You should see output something like following
+```console
+
+===============Congratulations Task Completed================
+
+---------------------------RESULTS---------------------------
+
+Completion time:        562.312157869339
+Percentage Mapped:      99.6
+Fidelity:               78.2
+Samples Located:        6
+Samples Collected:      6
+
+-------------------------------------------------------------
+Exiting -------------------
+
+
+```
+
+
 
 ## Notebook Analysis 
 
@@ -329,11 +359,11 @@ def decision_step(Rover):
         return Rover
 
 ```
-2) Now, we have got all the data from the perception step. We have to make a decision based on that data. 
-2.a) First thing we should to do is take care of edge cases. The first one is when the robot gets stuck. I am detecting that based on the time that it spends on one location. If it is more than 8 sec, robot will rotate at the same location. 
-2.b) If we found a rock in Robot frame, decrease the speed and drive slowly towards the rock.
-2.c) If we are in "forward" mode, keep moving in the direction closer to left wall until sample found or too close to wall. Then change the mode of operation
-2.d) If we are in "stop" mode, keep rotating until we find new direction of motion.
+2) Now, we have got all the data from the perception step. We have to make a decision based on that data.   
+2.a) First thing we should to do is take care of edge cases. The first one is when the robot gets stuck. I am detecting that based on the time that it spends on one location. If it is more than 8 sec, robot will rotate at the same location.    
+2.b) If we found a rock in Robot frame, decrease the speed and drive slowly towards the rock.   
+2.c) If we are in "forward" mode, keep moving in the direction closer to left wall until sample found or too close to wall. Then change the mode of operation.   
+2.d) If we are in "stop" mode, keep rotating until we find new direction of motion.   
 ```python
     # 2) make decision based on nav_angles, found_direction, and Rover.mode
 
