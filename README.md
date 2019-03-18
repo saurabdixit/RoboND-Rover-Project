@@ -3,7 +3,9 @@
 [![Udacity - Robotics NanoDegree Program](https://s3-us-west-1.amazonaws.com/udacity-robotics/Extra+Images/RoboND_flag.png)](https://www.udacity.com/robotics)
 # Search and Sample Return Project
 This project helped us in understanding how the perception, decision making and actuation are handeled in real life robotics.
-<iframe width="783" height="587" src="https://www.youtube.com/embed/Zu-8fPl4TfM" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<a href="http://www.youtube.com/watch?feature=player_embedded&v=Zu-8fPl4TfM
+" target="_blank"><img src="http://img.youtube.com/vi/Zu-8fPl4TfM/0.jpg" 
+alt="Rover in action" width="240" height="180" border="10" /></a>
 
 
 ## Notebook Analysis 
