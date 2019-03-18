@@ -13,7 +13,7 @@ Please click on following image to watch the video
 ## Notebook Analysis 
 
 ### process_image() function
-The prcess_image function was modified to accomplish following:
+Here is how process_image is working:
 1) Initially, I defined the grid size and bottom offset from the rover to the camera image start value.
 2) Then, I used perspective_transform function to identify warped image and got the mask as well.
 3) The perspective transform function takes three inputs: image, source, and destination. The image is captured from the data. However, the source was marked manually using the grid plot in simulation. The destination was calculated based on grid size.
@@ -300,7 +300,135 @@ def perception_step(Rover):
     return Rover
 
 ```
+#### Decision Step
+This step is responsible for commanding the robot to navigate in the environment and perform all the given tasks.
+Here is how it is implemented:
+1) I have defined the termination condition for the robot. Basically, I am saying is if the robot has identified location of more than 4 samples and has mapped more than 99.5% of map. The robot should stop once the termination condition is met.
+Note: I have implemented A* algorithm to accomplish the final optional task of commanding robot to go to the position where it is started. Howerver, I don't have time to do it currently. May be I will implement it once all the projects are in.
+```python
+def decision_step(Rover):
+    # 1) termination condition to terminate the robot when it has located more than 4 samples and mapped area is greater than 99.5 percent
+    if Rover.samples_located > 4 and Rover.mapped > 99.5:
+        Rover.throttle = 0
+        Rover.brake = Rover.brake_set
+        Rover.mode = 'stop'
+        if Rover.terminate_condition:
+            sys.exit(0)
+        print()
+        print('===========Congratulations Task Completed=============')
+        print()
+        print('-----------------------RESULTS------------------------')
+        print('Completion time:        ',Rover.total_time)
+        print('Percentage Mapped:      ',Rover.mapped)
+        print('Fidelity:               ',Rover.map_fidelity)
+        print('Samples Located:        ',Rover.samples_located)
+        print('Samples Collected:      ',Rover.samples_collected)
+        print()
+        print('------------------------------------------------------')
+        Rover.terminate_condition = True
+        return Rover
 
+```
+2) Now, we have got all the data from the perception step. We have to make a decision based on that data. 
+2.a) First thing we should to do is take care of edge cases. The first one is when the robot gets stuck. I am detecting that based on the time that it spends on one location. If it is more than 8 sec, robot will rotate at the same location. 
+2.b) If we found a rock in Robot frame, decrease the speed and drive slowly towards the rock.
+2.c) If we are in "forward" mode, keep moving in the direction closer to left wall until sample found or too close to wall. Then change the mode of operation
+2.d) If we are in "stop" mode, keep rotating until we find new direction of motion.
+```python
+    # 2) make decision based on nav_angles, found_direction, and Rover.mode
+
+    if Rover.nav_angles is not None:
+        # 2.a) make the robot unstuck
+        if np.array_equal(np.round(Rover.old_pos,decimals=1),np.round(Rover.pos,decimals=1)) and (not Rover.picking_up) and (time.time()-Rover.time_spent_by_rover_on_one_location > 8):
+            Rover.mode = 'stucked'
+        # Check for Rover.mode status
+        if Rover.mode == 'stucked':
+            Rover.Rock_found = False
+            Rover.throttle = 0
+            # Release the brake to allow turning
+            Rover.brake = 0
+            # Turn range is +/- 15 degrees, when stopped the next line will induce 4-wheel turning
+            Rover.steer = -15 # Could be more clever here about which way to turn
+            
+            if time.time()-Rover.time_spent_by_rover_on_one_location > 2:
+                Rover.mode = 'forward'
+
+        # 2.b) drive slowly towards rock
+        elif Rover.Rock_found:
+            if Rover.vel > 0.7:
+                Rover.throttle = 0
+                Rover.brake = Rover.brake_set
+            else:
+                Rover.steer = np.clip(np.mean(Rover.nav_angles * 180/np.pi), -15, 15)
+                if not Rover.near_sample:
+                    if Rover.vel < 0.5:
+                        Rover.throttle = Rover.throttle_set  
+                        Rover.brake = 0  
+                    else:
+                        Rover.throttle = 0
+                elif Rover.near_sample:
+                    Rover.throttle = 0
+                    Rover.brake = Rover.brake_set
+                    Rover.mode = 'stop'
+        
+        # 2.c) Keep moving in the direction closer to wall
+        elif Rover.mode == 'forward': 
+            if Rover.found_direction:
+                Rover.steer = np.clip(np.mean(Rover.nav_angles * 180/np.pi), -15, 15)
+                Rover.brake = 0
+                if Rover.vel < Rover.max_vel:
+                    Rover.throttle = Rover.throttle_set
+                else:
+                    Rover.throttle = 0
+            else:
+                Rover.throttle = 0
+                Rover.brake = Rover.brake_set
+                Rover.mode = 'stop'
+
+        # 2.d) Find new direction and move
+        elif Rover.mode == 'stop':
+            # If we're in stop mode but still moving keep braking
+            if Rover.vel > 0.2:
+                Rover.throttle = 0
+                Rover.brake = Rover.brake_set
+                Rover.steer = 0
+            # If we're not moving (vel < 0.2) then do something else
+            elif Rover.vel <= 0.2:
+                # Now we're stopped and we have vision data to see if there's a path forward
+                if len(Rover.nav_angles) < Rover.go_forward:
+                    Rover.throttle = 0
+                    # Release the brake to allow turning
+                    Rover.brake = 0
+                    # Turn range is +/- 15 degrees, when stopped the next line will induce 4-wheel turning
+                    Rover.steer = -15 # Could be more clever here about which way to turn
+                # If we're stopped but see sufficient navigable terrain in front then go!
+                if len(Rover.nav_angles) >= Rover.go_forward:
+                    # Set throttle back to stored value
+                    Rover.throttle = Rover.throttle_set
+                    # Release the brake
+                    Rover.brake = 0
+                    # Set steer to mean angle
+                    Rover.steer = np.clip(np.mean(Rover.nav_angles * 180/np.pi), -15, 15)
+                    if Rover.samples_located < 5:
+                        Rover.mode = 'forward'
+        
+    # Just to make the rover do something 
+    # even if no modifications have been made to the code
+    else:
+        Rover.throttle = Rover.throttle_set
+        Rover.steer = 0
+        Rover.brake = 0
+```
+3) Pickup sample if we are near the sample.
+```python      
+    # 3) Pickup, if we are near the sample
+    # If in a state where want to pickup a rock send pickup command
+    if Rover.near_sample and Rover.vel == 0 and not Rover.picking_up:
+        Rover.send_pickup = True
+
+   
+    return Rover
+```
 
 
 ### Issue with current implementation
