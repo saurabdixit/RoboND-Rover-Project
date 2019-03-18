@@ -3,6 +3,8 @@
 [![Udacity - Robotics NanoDegree Program](https://s3-us-west-1.amazonaws.com/udacity-robotics/Extra+Images/RoboND_flag.png)](https://www.udacity.com/robotics)
 # Search and Sample Return Project
 This project helped us in understanding how the perception, decision making and actuation are handeled in real life robotics.
+
+
 Please click on following image to watch the video
 <p align="center">
   <a href="http://www.youtube.com/watch?v=Zu-8fPl4TfM"><img src="http://img.youtube.com/vi/Zu-8fPl4TfM/0.jpg"></a>
@@ -11,7 +13,17 @@ Please click on following image to watch the video
 ## Notebook Analysis 
 
 ### process_image() function
-I modified the process image function to the following:
+The prcess_image function was modified to accomplish following:
+1) Initially, I defined the grid size and bottom offset from the rover to the camera image start value.
+2) Then, I used perspective_transform function to identify warped image and got the mask as well.
+3) The perspective transform function takes three inputs: image, source, and destination. The image is captured from the data. However, the source was marked manually using the grid plot in simulation. The destination was calculated based on grid size.
+4) After that I appled color_thresh functions to identify navigable terrain and obstacle map
+5) Then, Identified the pixel values of the where navigable terrain using the images generated from color_thresh function. Similarly, identifed the pixel values of obstacles
+6) I converted the pixel values of navigable terrain and obstacle map to the world coordinates so that we can plot it on map.
+7) On the map, when robot moves, it marks navigable terrain in blue and obstacles as red.
+8) The next step was to find the rock in the give scene. I used the find_rocks function on the warped image generated from perspective_transform function to find the pixel location of the rock. Similar to point 6, I converted the pixel values of rock to world frame of reference. The rock will be marked as white dot on the map.
+
+Here are the details of implementation:
 ```python
 def process_image(img):
     image = np.copy(img)
@@ -74,18 +86,6 @@ def process_image(img):
     
     return output_image
 ```
-1) Initially, I defined the grid size and bottom offset from the rover to the camera image start value.
-2) Then, I used perspective_transform function to identify warped image and got the mask as well.
-3) The perspective transform function takes three inputs: image, source, and destination. The image is captured from the data. However, the source was marked manually using the grid plot in simulation. The destination was calculated based on grid size.
-4) After that I appled color_thresh functions to identify navigable terrain and obstacle map
-5) Then, Identified the pixel values of the where navigable terrain using the images generated from color_thresh function. Similarly, identifed the pixel values of obstacles
-6) I converted the pixel values of navigable terrain and obstacle map to the world coordinates so that we can plot it on map.
-7) On the map, when robot moves, it marks navigable terrain in blue and obstacles as red.
-8) The next step was to find the rock in the give scene. I used the find_rocks function on the warped image generated from perspective_transform function to find the pixel location of the rock. Similar to point 6, I converted the pixel values of rock to world frame of reference. The rock will be marked as white dot on the map.
-
-
-
-
 
 
 ### Rock Identification
@@ -134,7 +134,7 @@ There are number of ways to accomplish this task. However, the best way  is to u
 As we have limitation over the sensor, I went with the approach of following the wall as suggested in hints. 
 
 #### Wall following
-To accomplish this task, I defined a vector (in code it is actually defined as an ellipse of very small thickness) of small size which basically goes from negative angle to postive angle in the field of view of robot and returns the angle where there is no collision. After I get the direction of no-collision, I use that vector to make a mask in ellispsoidal shape. When I apply this mask to the navigable pixels, I get the direction in which I have to go to remain close to wall. In following image, Red indicates non-navigable terrain, Black indicates navigable terrain, Blue is the mask I am making, and Green is the vector that I am using.
+To accomplish this task, I defined a vector (in code it is actually defined as an ellipse of very small thickness) of small size which basically goes from negative angle to postive angle in the field of view of robot and returns the angle where there is no collision. After I get the direction of no-collision, I use that vector to make a mask in ellispsoidal shape. When I apply this mask to the navigable pixels, I get the direction in which robot has to go to remain close to wall. In following image, Red indicates non-navigable terrain, Black indicates navigable terrain, Blue is the mask to follow wall, and Green is the vector that I am using for checking collision.
 
 <p align="center">
 <img src="./misc/WallFollowingConcept.png" />
@@ -151,16 +151,18 @@ def ArcMaskGenerator(mask,axes,center,angle,startAngleDegrees,endAngleDegrees):
 I am calling this function inside perception_step. For more details, please continue reading.
 
 #### Rock Identification and pick up
-My robot behaves in greedy manner. Basically, as soon as the robot identifies the golden samples, it picks it up. However, the policy for searching is following the left wall. Thus, I was running into issues of skipping the rest of the path whenever the robot identifies a rock on the other i.e. right side of the pathway. Hence, I have applied the similar mask for the Rock as well. However, unlike WallFollowMask, RockMask is static. Please refer to following image
+My robot behaves in greedy manner. Basically, as soon as the robot identifies the golden samples, it picks it up. However, the policy for searching is following the left wall. Thus, I was running into issues of skipping the rest of the path whenever the robot identifies a rock on the other i.e. right side of the pathway. Hence, I have applied the similar mask for the Rock detection as well. However, unlike WallFollowMask, RockMask is static. Please refer to following image of RockMask.
 <p align="center">
 <img src="./misc/rockmask.png" />
 </p>
 
+Now, let's dig deeper into perception step.
 
 
 #### Perception Step
 This function is responsible for sensing the world around robot. It will give a direction where robot can go safely. Here is how it is implemented in the code.
 
+1) Initially, I have defined a variable Update_map which I am using later to decide whether to update the map or not given the robot position. Also, defined the variables that I will be using to process image.
 ```python
 def perception_step(Rover):
     # Perform perception steps to update Rover()
@@ -177,7 +179,11 @@ def perception_step(Rover):
                       [image.shape[1]/2 + dst_size, image.shape[0] - 2*dst_size - bottom_offset], 
                       [image.shape[1]/2 - dst_size, image.shape[0] - 2*dst_size - bottom_offset],
                       ])
-
+```
+2) Applied, perspective transform to get the warped image and mask.
+3) Identified navigable terrain and obstacle map
+4) Populated those on the left side of the screen
+```python
     # 2) Apply perspective transform
     warped,mask = perspect_transform(Rover.img, source, destination)
     # 3) Apply color threshold to identify navigable terrain/obstacles/rock samples
@@ -186,7 +192,11 @@ def perception_step(Rover):
     # 4) Update Rover.vision_image (this will be displayed on left side of screen)
     Rover.vision_image[:,:,0] = obs_map * 255
     Rover.vision_image[:,:,2] = threshed * 255
-    
+```
+5) Get coordinates of navigable terrain and obstacles. This will give us pixels position in rover centric coordinates.
+6) We need to convert the rover centric coordinates to world frame of reference. 
+7) Now, we need to update the world map using this data. However, as we are capturing the data using a camera on Rover, we need to make sure that we don't capture any false positive. To avoid that I am only capturing the data when the robot is flat on the ground. 
+```python
     # 5) Convert map image pixel values to rover-centric coords
     xpix, ypix = rover_coords(threshed)
     obs_xpix, obs_ypix = rover_coords(obs_map)
@@ -215,8 +225,13 @@ def perception_step(Rover):
     if Update_map:
         Rover.worldmap[obs_y_pix_world, obs_x_pix_world,0] += 1
         Rover.worldmap[y_pix_world, x_pix_world, 2] += 20
-    
+```
+8) I am making the rock mask, frontal collision vector, and wall follow mask here. This is explained previously.  
+    The found direction is telling us whether we found a direction where we are not colliding. If we couldn't find any direction, the robot will rotate at its current position and stop when it actually finds a direction. 
+    Note that there is a tolerance built into this to avoid any false data. The variable too_much_collision is the allowance. This indicates a count of non-navigable pixels. min_collision_i is the angle when the collision is minimum. This is later used to decide the correct driving direction. 
 
+```python
+    # 8) Draw a vector to avoid frontal collision,  WallFollowMask and Rock mask
     cen = (160,160)   # Center for drawing the ellipse
     RockMask = np.zeros_like(image[:,:,0])    #only identify the rocks which are on near left wall.
     RockMask = ArcMaskGenerator(RockMask, (45,70),cen,-144,0,80)
@@ -228,7 +243,7 @@ def perception_step(Rover):
     min_collision_i = -145
     too_much_collision = 3
 
-    for i in range(-108,-72,2):
+    for i in range(-108,-72,2): # Go through iteration from negative angle to positive angle as in rover's percpective to get a direction of less collision.
         FrontalCollisionMask = np.zeros_like(image[:,:,0])
         FrontalCollisionMask = ArcMaskGenerator(FrontalCollisionMask,(20,3),cen,i,-90,90) 
         FrontalCollisionMask[int(FrontalCollisionMask.shape[0]*0.95):,:] = 0
@@ -253,9 +268,12 @@ def perception_step(Rover):
             Rover.drive_direction = min_collision_i
             Rover.found_direction = True
     
-
+    #Truncate the mask using Rover.drive_direction
     WallFollowMask = ArcMaskGenerator(WallFollowMask,(65,23),cen,Rover.drive_direction,-90,83) 
-    
+```
+9) You might say that why is there a need of identifying navigable pixel if we are already calculating drive direction based on the frontal collision vector. However, we are doing this to avoid any instaneous motion of robot's steering. Hence, once we are getting Rover.drive_direction, we use that to create a WallFollowMask and do the mean of navigable terrain to find most suitable direction of motion. Also, following code also include greedy behaviour of the robot i.e. get the golden samples if there are any.
+```python
+    # 9) Get navigable pixels using the updated WallFollowMask and use it to get the navigable pixels
     xpix_nav,ypix_nav = rover_coords(threshed * WallFollowMask)
     
     if rock_map.any():
@@ -274,8 +292,6 @@ def perception_step(Rover):
     
     else:
         Rover.vision_image[:,:,1] = 0
-
-        #If no rocks found move in freespace
         distance, angles = to_polar_coords(xpix_nav,ypix_nav)
         Rover.nav_dists = distance
         Rover.nav_angles = angles
