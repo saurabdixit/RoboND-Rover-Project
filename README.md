@@ -35,8 +35,8 @@ Samples Collected:      6
 -------------------------------------------------------------
 Exiting -------------------
 
-
 ```
+5) Path-planning is implemented but not merged with the Rover code. It is in A-Star jupyter notebook in the [Path-Planning-Algorithm](./code/Path-Planning-Algorithm) directory.
 
 
 
@@ -465,7 +465,7 @@ def decision_step(Rover):
 
 
 ### Path-Planning implementation:
-The only thing that is remaining in the current implmentation is that the path-planning algorithm is not merged in to the Rover's code yet. I was able to write A* algorithm that was able to find the path on the map. The implementation is currently in jupyter notebook in directory [./code/Path-Planning-Algorithm/]. 
+The only thing that is remaining in the current implmentation is that the path-planning algorithm is not merged in to the Rover's code yet. I was able to write A* algorithm that was able to find the path on the map. The implementation is currently in jupyter notebook in [Path-Planning-Algorithm](./code/Path-Planning-Algorithm) directory. 
 
 #### Here is the result of A* algorithm
 <p align="center">
