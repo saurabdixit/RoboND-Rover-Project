@@ -41,6 +41,41 @@ Exiting -------------------
 
 
 ## Notebook Analysis 
+The process image function uses find_rocks and perspective transform function to identify the location of the rock and obstacles/navigable terrain respectively. Hence, lets go through the implmentation of those two first before we go in the implementation of process_image function.
+
+### Rock Identification
+I have added a function named find_rocks. This function identifies the golden sample present in the image taken by the Rover.
+```python
+def find_rocks(img,levels=(110,110,50)):
+    rockpix = ((img[:,:,0]>levels[0])&(img[:,:,1]>levels[1])&(img[:,:,2]<levels[2]))
+    rock_image = np.zeros_like(img[:,:,0])
+    rock_image[rockpix] = 1
+    return rock_image
+```
+Following is the example of input amd output image.
+![](./misc/find_rock.png?raw=true "Find Rock function input and output")
+
+### Obstacle Identification
+To identify the obstacles in the environment, I have identified the areas which are not navigable.
+```python
+threshold = color_thresh(warped)                    #Navigable areas
+obs_map = np.absolute(np.float32(threshold)-1)      #Obstacles
+```
+There was a mask introduced in the perspective_transform function to make sure that robot captures just the relevant part of the image. Hence, the perspective transform function was changed to 
+```python
+def perspect_transform(img, src, dst):
+           
+    M = cv2.getPerspectiveTransform(src, dst)
+    warped = cv2.warpPerspective(img, M, (img.shape[1], img.shape[0]))# keep same size as input image
+    
+    #Added following line
+    mask = cv2.warpPerspective(np.ones_like(img[:,:,0]), M, (img.shape[1], img.shape[0]))
+    
+    return warped,mask
+```
+After multiplying the mask with the threshold image, we got following results:
+![](./misc/warped.png?raw=true "Warped")
+
 
 ### process_image() function
 Here is how process_image is working:
@@ -117,39 +152,6 @@ def process_image(img):
     return output_image
 ```
 
-
-### Rock Identification
-I have added a function named find_rocks. This function identifies the golden sample present in the image taken by the Rover.
-```python
-def find_rocks(img,levels=(110,110,50)):
-    rockpix = ((img[:,:,0]>levels[0])&(img[:,:,1]>levels[1])&(img[:,:,2]<levels[2]))
-    rock_image = np.zeros_like(img[:,:,0])
-    rock_image[rockpix] = 1
-    return rock_image
-```
-Following is the example of input amd output image.
-![](./misc/find_rock.png?raw=true "Find Rock function input and output")
-
-### Obstacle Identification
-To identify the obstacles in the environment, I have identified the areas which are not navigable.
-```python
-threshold = color_thresh(warped)                    #Navigable areas
-obs_map = np.absolute(np.float32(threshold)-1)      #Obstacles
-```
-There was a mask introduced in the perspective_transform function to make sure that robot captures just the relevant part of the image. Hence, the perspective transform function was changed to 
-```python
-def perspect_transform(img, src, dst):
-           
-    M = cv2.getPerspectiveTransform(src, dst)
-    warped = cv2.warpPerspective(img, M, (img.shape[1], img.shape[0]))# keep same size as input image
-    
-    #Added following line
-    mask = cv2.warpPerspective(np.ones_like(img[:,:,0]), M, (img.shape[1], img.shape[0]))
-    
-    return warped,mask
-```
-After multiplying the mask with the threshold image, we got following results:
-![](./misc/warped.png?raw=true "Warped")
 
 
 ## Autonomous Navigation and Mapping
