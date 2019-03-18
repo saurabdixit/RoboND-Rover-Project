@@ -9,46 +9,11 @@ Please click on following image to watch the video
 </p>
 
 ## Notebook Analysis 
-### Rock Identification
-I have added a function named find_rocks. This function identifies the golden sample present in the image taken by the Rover.
-```python
-def find_rocks(img,levels=(110,110,50)):
-    rockpix = ((img[:,:,0]>levels[0])&(img[:,:,1]>levels[1])&(img[:,:,2]<levels[2]))
-    rock_image = np.zeros_like(img[:,:,0])
-    rock_image[rockpix] = 1
-    return rock_image
-```
-Following is the example of input amd output image.
-![](./misc/find_rock.png?raw=true "Find Rock function input and output")
-### Obstacle Identification
-To identify the obstacles in the environment, I have identified the areas which are not navigable.
-```python
-threshold = color_thresh(warped)                    #Navigable areas
-obs_map = np.absolute(np.float32(threshold)-1)      #Obstacles
-```
-There was a mask introduced in the perspective_transform function to make sure that robot captures just the relevant part of the image. Hence, the perspective transform function was changed to 
-```python
-def perspect_transform(img, src, dst):
-           
-    M = cv2.getPerspectiveTransform(src, dst)
-    warped = cv2.warpPerspective(img, M, (img.shape[1], img.shape[0]))# keep same size as input image
-    
-    #Added following line
-    mask = cv2.warpPerspective(np.ones_like(img[:,:,0]), M, (img.shape[1], img.shape[0]))
-    
-    return warped,mask
-```
-After multiplying the mask with the threshold image, we got following results:
-![](./misc/warped.png?raw=true "Warped")
 
 ### process_image() function
 I modified the process image function to the following:
 ```python
 def process_image(img):
-    # Example of how to use the Databucket() object defined above
-    # to print the current x, y and yaw values 
-    # print(data.xpos[data.count], data.ypos[data.count], data.yaw[data.count])
-
     image = np.copy(img)
     # TODO: 
     # 1) Define source and destination points for perspective transform
@@ -73,24 +38,16 @@ def process_image(img):
     x_pix_world, y_pix_world = pix_to_world(xpix, ypix, data.xpos[data.count], data.ypos[data.count], data.yaw[data.count], 200,10)
     obs_x_pix_world, obs_y_pix_world = pix_to_world(obs_xpix, obs_ypix, data.xpos[data.count], data.ypos[data.count], data.yaw[data.count], 200,10)
     # 6) Update worldmap (to be displayed on right side of screen)
-        # Example: data.worldmap[obstacle_y_world, obstacle_x_world, 0] += 1
-        #          data.worldmap[rock_y_world, rock_x_world, 1] += 1
-        #          data.worldmap[navigable_y_world, navigable_x_world, 2] += 1
     data.worldmap[y_pix_world, x_pix_world, 2] = 255
     data.worldmap[obs_y_pix_world, obs_x_pix_world, 0] = 255
     navpix = data.worldmap[:,:,2]>0
     data.worldmap[navpix,0] =0
-    
     rock_map = find_rocks(warped,levels=(110,110,50))
     if rock_map.any():
         rock_x,rock_y = rover_coords(rock_map)
         rock_x_world, rock_y_world = pix_to_world(rock_x,rock_y,data.xpos[data.count], data.ypos[data.count], data.yaw[data.count], 200,10)
         
         data.worldmap[rock_y_world,rock_x_world,:] = 255
-        
-    
-    
-    
     # 7) Make a mosaic image, below is some example code
         # First create a blank image (can be whatever shape you like)
     output_image = np.zeros((img.shape[0] + data.worldmap.shape[0], img.shape[1]*2, 3))
@@ -128,17 +85,207 @@ def process_image(img):
 
 
 
+
+
+
+### Rock Identification
+I have added a function named find_rocks. This function identifies the golden sample present in the image taken by the Rover.
+```python
+def find_rocks(img,levels=(110,110,50)):
+    rockpix = ((img[:,:,0]>levels[0])&(img[:,:,1]>levels[1])&(img[:,:,2]<levels[2]))
+    rock_image = np.zeros_like(img[:,:,0])
+    rock_image[rockpix] = 1
+    return rock_image
+```
+Following is the example of input amd output image.
+![](./misc/find_rock.png?raw=true "Find Rock function input and output")
+
+### Obstacle Identification
+To identify the obstacles in the environment, I have identified the areas which are not navigable.
+```python
+threshold = color_thresh(warped)                    #Navigable areas
+obs_map = np.absolute(np.float32(threshold)-1)      #Obstacles
+```
+There was a mask introduced in the perspective_transform function to make sure that robot captures just the relevant part of the image. Hence, the perspective transform function was changed to 
+```python
+def perspect_transform(img, src, dst):
+           
+    M = cv2.getPerspectiveTransform(src, dst)
+    warped = cv2.warpPerspective(img, M, (img.shape[1], img.shape[0]))# keep same size as input image
+    
+    #Added following line
+    mask = cv2.warpPerspective(np.ones_like(img[:,:,0]), M, (img.shape[1], img.shape[0]))
+    
+    return warped,mask
+```
+After multiplying the mask with the threshold image, we got following results:
+![](./misc/warped.png?raw=true "Warped")
+
+
 ## Autonomous Navigation and Mapping
-
-
 ### Optimal Implementation Theory
-There are number of ways to accomplish this task. However, the best way  is to use Depth first search. Here is how depth first search will work on this problem: Suppose the robot is at the center of the map. There are three possible direction that robot can go into. Let's call that three branches. It will completely visit one branch or let's say map one branch before visiting another one. This will ensure that no brances are visited twice. In this case, the limitation we have is that the sensor that we are using is not scanning complete 360 degree feild of view. Hence, to implment depth first search, we would have to rotate the robot at current position, identify all the navigable nodes and mark it. Ofcourse, we would have to divide the scanned area in definite sized grid otherwise we will end up with infinite amount of nodes and robot will have to visit all of them.
+There are number of ways to accomplish this task. However, the best way  is to use Depth first search. Here is how depth first search will work on this problem: Suppose the robot is at the center of the map. Please look at following image. There are three possible direction that robot can go into. Let's call that three branches. It will completely visit one branch or let's say map one branch before visiting another one. This will ensure that no brances are visited twice. In this case, the limitation we have is that the sensor that we are using is not scanning complete 360 degree feild of view. Hence, to implment depth first search, we would have to rotate the robot at current position, identify all the navigable nodes and mark it. Ofcourse, we would have to divide the scanned area in definite sized grid otherwise we will end up with too many nodes and robot will have to visit all of them.
+
+<p align="center">
+<img src="./misc/BreadthFirstSearch.png" />
+</p>
 
 ### My Implementation
-As we have limitation over the sensor, I went with the approach of following the wall as suggested in hints. To accomplish this task, I used a mask which only looks at the approximately center part to right side of the navigable terrain and calculates the steering angle based on that. Hence, my robot always follow the right wall.
+As we have limitation over the sensor, I went with the approach of following the wall as suggested in hints. 
 
-### Rock Identification and pick up
-My robot behaves in greedy manner. Basically, as soon as the robot identifies the golden samples, it picks it up. However, the policy for searching is following the right wall. Thus, I was running into issues of skipping the rest of the path whenever the robot identifies a rock on the other i.e. left side of the pathway. Hence, I have applied the same mask i.e. don't detect the rock which are on the left side of robot and keep going. The robot will find it on its way back.
+#### Wall following
+To accomplish this task, I defined a vector (in code it is actually defined as an ellipse of very small thickness) of small size which basically goes from negative angle to postive angle in the field of view of robot and returns the angle where there is no collision. After I get the direction of no-collision, I use that vector to make a mask in ellispsoidal shape. When I apply this mask to the navigable pixels, I get the direction in which I have to go to remain close to wall. In following image, Red indicates non-navigable terrain, Black indicates navigable terrain, Blue is the mask I am making, and Green is the vector that I am using.
+
+<p align="center">
+<img src="./misc/WallFollowingConcept.png" />
+</p>
+
+As I am going from negative angle to postive angle, I will always have the tendancy to follow the left wall. 
+
+I wrote a function to draw me the vector (In code it is defined as variable FrontalCollisionMask) and ellipsoidal mask (WallFollowMask)
+```python
+def ArcMaskGenerator(mask,axes,center,angle,startAngleDegrees,endAngleDegrees):
+    cv2.ellipse(mask,center,axes,angle,startAngleDegrees,endAngleDegrees,1,thickness=cv2.FILLED)
+    return mask
+```
+I am calling this function inside perception_step. For more details, please continue reading.
+
+#### Rock Identification and pick up
+My robot behaves in greedy manner. Basically, as soon as the robot identifies the golden samples, it picks it up. However, the policy for searching is following the left wall. Thus, I was running into issues of skipping the rest of the path whenever the robot identifies a rock on the other i.e. right side of the pathway. Hence, I have applied the similar mask for the Rock as well. However, unlike WallFollowMask, RockMask is static. Please refer to following image
+<p align="center">
+<img src="./misc/rockmask.png" />
+</p>
+
+
+
+#### Perception Step
+This function is responsible for sensing the world around robot. It will give a direction where robot can go safely. Here is how it is implemented in the code.
+
+```python
+def perception_step(Rover):
+    # Perform perception steps to update Rover()
+    # TODO: 
+    # NOTE: camera image is coming to you in Rover.img
+    Update_map = False
+    # 1) Define source and destination points for perspective transform
+    dst_size = 5 
+    bottom_offset = 6
+    source = np.float32([[14, 140], [301 ,140],[200, 96], [118, 96]])
+    image = Rover.img
+    destination = np.float32([[image.shape[1]/2 - dst_size, image.shape[0] - bottom_offset],
+                      [image.shape[1]/2 + dst_size, image.shape[0] - bottom_offset],
+                      [image.shape[1]/2 + dst_size, image.shape[0] - 2*dst_size - bottom_offset], 
+                      [image.shape[1]/2 - dst_size, image.shape[0] - 2*dst_size - bottom_offset],
+                      ])
+
+    # 2) Apply perspective transform
+    warped,mask = perspect_transform(Rover.img, source, destination)
+    # 3) Apply color threshold to identify navigable terrain/obstacles/rock samples
+    threshed = color_thresh(warped)
+    obs_map = np.absolute(np.float32(threshed)-1)*mask
+    # 4) Update Rover.vision_image (this will be displayed on left side of screen)
+    Rover.vision_image[:,:,0] = obs_map * 255
+    Rover.vision_image[:,:,2] = threshed * 255
+    
+    # 5) Convert map image pixel values to rover-centric coords
+    xpix, ypix = rover_coords(threshed)
+    obs_xpix, obs_ypix = rover_coords(obs_map)
+    # 6) Convert rover-centric pixel values to world coordinates
+    world_map_size = Rover.worldmap.shape[0]
+    scale = 2 * dst_size
+    x_pix_world, y_pix_world = pix_to_world(xpix, ypix, Rover.pos[0],Rover.pos[1],Rover.yaw, world_map_size,scale)
+    obs_x_pix_world, obs_y_pix_world = pix_to_world(obs_xpix, obs_ypix, Rover.pos[0],Rover.pos[1],Rover.yaw, world_map_size,scale)
+    # 7) Update Rover worldmap (to be displayed on right side of screen)
+    # Update map only when robot is flat on the ground
+
+    update_map_threshold = 0.5
+    if Rover.pitch > 180 and Rover.roll > 180:
+        if (360-Rover.pitch) < update_map_threshold and (360-Rover.roll) < update_map_threshold:
+            Update_map = True
+    elif Rover.pitch < 180 and Rover.roll > 180:
+        if (Rover.pitch) < update_map_threshold and (360-Rover.roll) < update_map_threshold:
+            Update_map = True
+    elif Rover.pitch > 180 and Rover.roll < 180:
+        if (360-Rover.pitch) < update_map_threshold and (Rover.roll) < update_map_threshold:
+            Update_map = True
+    else:
+        if (Rover.pitch) < update_map_threshold and (Rover.roll) < update_map_threshold:
+            Update_map = True
+    
+    if Update_map:
+        Rover.worldmap[obs_y_pix_world, obs_x_pix_world,0] += 1
+        Rover.worldmap[y_pix_world, x_pix_world, 2] += 20
+    
+
+    cen = (160,160)   # Center for drawing the ellipse
+    RockMask = np.zeros_like(image[:,:,0])    #only identify the rocks which are on near left wall.
+    RockMask = ArcMaskGenerator(RockMask, (45,70),cen,-144,0,80)
+    rock_map = find_rocks(warped,RockMask,levels=(110,110,50))
+        
+    WallFollowMask = np.zeros_like(image[:,:,0])
+    found_direction = False
+    min_collision = 0
+    min_collision_i = -145
+    too_much_collision = 3
+
+    for i in range(-108,-72,2):
+        FrontalCollisionMask = np.zeros_like(image[:,:,0])
+        FrontalCollisionMask = ArcMaskGenerator(FrontalCollisionMask,(20,3),cen,i,-90,90) 
+        FrontalCollisionMask[int(FrontalCollisionMask.shape[0]*0.95):,:] = 0
+        x_collision, _ = rover_coords(abs(1-threshed) * FrontalCollisionMask)
+        if len(x_collision) == 0:
+            found_direction = True
+            break
+
+        if (min_collision == 0 or len(x_collision) < min_collision):
+            min_collision = len(x_collision)
+            min_collision_i = i
+
+    
+    if found_direction:
+        Rover.drive_direction = i
+        Rover.found_direction = found_direction
+    else:
+        if (min_collision == 0 or min_collision > too_much_collision):
+            Rover.drive_direction = 0
+            Rover.found_direction = False
+        else:
+            Rover.drive_direction = min_collision_i
+            Rover.found_direction = True
+    
+
+    WallFollowMask = ArcMaskGenerator(WallFollowMask,(65,23),cen,Rover.drive_direction,-90,83) 
+    
+    xpix_nav,ypix_nav = rover_coords(threshed * WallFollowMask)
+    
+    if rock_map.any():
+        rock_x,rock_y = rover_coords(rock_map)
+        rock_x_world, rock_y_world = pix_to_world(rock_x,rock_y, Rover.pos[0],Rover.pos[1],Rover.yaw, world_map_size,scale)
+        dist_rock, angle_rock = to_polar_coords(rock_x,rock_y)
+        Rover.nav_dists = dist_rock
+        Rover.nav_angles = angle_rock
+
+        rck_idx = np.argmin(dist_rock)
+        rck_xcen = rock_x_world[rck_idx]
+        rck_ycen = rock_y_world[rck_idx]
+        Rover.worldmap[rck_ycen, rck_xcen, :] = 255
+        Rover.vision_image[:,:,1] = rock_map * 255
+        Rover.Rock_found = True
+    
+    else:
+        Rover.vision_image[:,:,1] = 0
+
+        #If no rocks found move in freespace
+        distance, angles = to_polar_coords(xpix_nav,ypix_nav)
+        Rover.nav_dists = distance
+        Rover.nav_angles = angles
+        Rover.Rock_found = False
+
+    return Rover
+
+```
+
+
 
 ### Issue with current implementation
 There is one issue in my implementation and I know how to solve it. However, I am getting too late for submitting this project and would like to submit this project soon.
