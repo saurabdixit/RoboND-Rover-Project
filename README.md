@@ -151,7 +151,7 @@ def process_image(img):
     
     return output_image
 ```
-
+Please find the video output in output directory of this repository
 
 
 ## Autonomous Navigation and Mapping
