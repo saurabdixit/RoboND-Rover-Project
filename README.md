@@ -19,7 +19,7 @@ This project helped us in understanding how the perception, decision making and 
 </p>
 
 3) Run drive_rover.py in anaconda terminal using RoboND environment.
-4) The robot should navigate in the environment autonomously and should stop when samples located is greater than 4 and percentage environment mapped is greater than 99.5%. You should see output something like following
+4) The robot should navigate the environment autonomously and should stop when the samples located are greater than 4 and percentage environment mapped is greater than 99.5%. Also, You should see something like following on the terminal
 ```console
 
 ===============Congratulations Task Completed================
@@ -461,13 +461,19 @@ def decision_step(Rover):
 ```
 
 
-### Issue with current implementation
-There is one issue in my implementation and I know how to solve it. However, I am getting too late for submitting this project and would like to submit this project soon.
 
-The robot sometimes run into obstacles as it is not utilizing the full field of view to plan the path. It makes it stuck sometimes. To make it unstuck, I have added the logic which makes the robot turn on its own position if it get stuck at one position for more than 8 secs. One more thing that I wanted to add is to define the configuration space (C-Space) for the robot. So that robot would avoid going close to the obstacles and plan path away from the obstacles.
+### Path-Planning implementation:
+The only thing that is remaining in the current implmentation is that the path-planning algorithm is not merged in to the Rover's code yet. I was able to write A* algorithm that was able to find the path on the map. The implementation is currently in jupyter notebook in directory [./code/Path-Planning-Algorithm/]. 
 
-### Remaining Implementation:
-The only thing that is remaining in this implementation is to command the robot to go to the start position when all the samples are collected. The algorithm that could do this quickly is RRT* as we know the start position of the robot and we know the current position of the robot. We can start the Rapidly-growing random tree on the start position and on the current position and wait for them to merge. Once they merge, we will have path to follow. We can also make it goal directed so that the tree can grow in the direction of where it wants to go.
+#### Here is the result of A* algorithm
+<p align="center">
+<img src="./misc/AStarOutput.png" />
+</p>
 
 
 
+### Issues found in the simulator
+I ran into some issues in the simulator. 
+1) The rocks are weirdly shaped that is not seen by camera. If you go to the end of my video, you will see that robot's wheel hits the edge of rock. The only way I can avoid is to go closer to wall. However, I ran into issues in different location
+2) If I go too close to the wall, there is one point where robot's arm hit the rock. I don't know a way to fix this as the camera is in front of robot not the back of robot.
+3) The colors are not consistent: In some locations, crest is brighter and planes are darker than expected.
