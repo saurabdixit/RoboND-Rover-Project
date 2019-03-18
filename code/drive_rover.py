@@ -85,6 +85,7 @@ class RoverState():
         self.picking_up = 0 # Will be set to telemetry value data["picking_up"]
         self.send_pickup = False # Set to True to trigger rock pickup
 # Initialize our rover 
+
 Rover = RoverState()
 
 # Variables to track frames per second (FPS)

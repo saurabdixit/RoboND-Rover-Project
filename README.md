@@ -4,7 +4,7 @@
 # Search and Sample Return Project
 This project helped us in understanding how the perception, decision making and actuation are handeled in real life robotics.
 
-## Notebook Analysis
+## Notebook Analysis 
 ### Rock Identification
 I have added a function named find_rocks. This function identifies the golden sample present in the image taken by the Rover.
 ```python

@@ -227,6 +227,7 @@ def perception_step(Rover):
     WallFollowMask = ArcMaskGenerator(WallFollowMask,(65,23),cen,Rover.drive_direction,-90,83) 
     
     
+    
     #WallFollowMask = ArcMaskGenerator(WallFollowMask,(140,60),cen,-144,0,90)
     #WallFollowMask = ArcMaskGenerator(WallFollowMask,50,(160,160),-60,-120)
     #WallFollowMask = ArcMaskGenerator(WallFollowMask,30,(160,160),-30,-60)
